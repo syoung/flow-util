@@ -1,0 +1,19 @@
+
+>>> chown -R sgeadmin:sgeadmin /opt/sge6/syoung-smallcluster
+>>> Updating hostname on head node
+>>> Updating act_qmaster file
+>>> Restarting SGE qmaster and execd daemons
+>>> /bin/ps aux | grep sgeadmin | cut -c9-14 | xargs -n1 -iPID /bin/kill -9 PID &> /dev/null
+>>> Enabling job scheduling info
+denied: host "ip-10-122-13-145.ec2.internal" is neither submit nor admin host
+denied: host "ip-10-122-13-145.ec2.internal" is neither submit nor admin host
+>>> Adding 'threaded' parallel environment
+>>> Adding head node to submit hosts and admin hosts lists
+>>> Add master to @allhosts group
+>>> sge.addToAllhosts    command: /opt/sge6/bin/lx24-amd64/qconf -aattr hostgroup hostlist master @allhosts >> /tmp/allhosts.out; 
+>>> Restarting SGE qmaster and execd daemons
+>>> /bin/ps aux | grep sgeadmin | cut -c9-14 | xargs -n1 -iPID /bin/kill -9 PID &> /dev/null
+>>> Completed running plugin: sge.CreateCell
+
+
+The cluster has been started and configured.
