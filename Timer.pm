@@ -4,12 +4,12 @@ use Method::Signatures::Simple;
 
 =head2
 
-	PACKAGE		Util::Timer
-	
-	PURPOSE
-	
-		TIME-RELATED METHODS
-		
+  PACKAGE    Util::Timer
+  
+  PURPOSE
+  
+    TIME-RELATED METHODS
+    
 =cut
 
 method localTime {
@@ -42,87 +42,121 @@ method localTime {
 }
 
 method runtime ( $start_time, $end_time ) {
-	
-	my $run_time = $end_time - $start_time;
-	($run_time) = $self->hoursMinsSecs($run_time);
-#	$self->logNote("\nRUN TIME", $run_time);
+  
+  my $run_time = $end_time - $start_time;
+  ($run_time) = $self->hoursMinsSecs($run_time);
+#  $self->logNote("\nRUN TIME", $run_time);
 
-	return $run_time;	
+  return $run_time;  
 }
 
 method hoursMinsSecs ( $seconds ) {
-	
-	my $hours = int($seconds / 3600);
-	my $minutes = int( ($seconds % 3600) / 60 );
-	$seconds = ( ($seconds % 3600) % 60 );
+  
+  my $hours = int($seconds / 3600);
+  my $minutes = int( ($seconds % 3600) / 60 );
+  $seconds = ( ($seconds % 3600) % 60 );
 
-	$hours = $self->padZero($hours, 2);
-	$minutes = $self->padZero($minutes, 2);
-	$seconds = $self->padZero($seconds, 2);
-	
-	return "$hours:$minutes:$seconds";
+  $hours = $self->padZero($hours, 2);
+  $minutes = $self->padZero($minutes, 2);
+  $seconds = $self->padZero($seconds, 2);
+  
+  return "$hours:$minutes:$seconds";
 }
 
 method seconds ( $hoursMinsSecs ) {
-	
-	my $seconds = 0;
-	my ($hours, $mins, $secs) = $hoursMinsSecs =~ /^([^:]+):([^:]+):([^:]+)$/;
-	$seconds += $hours * 3600;
-	$seconds += $mins * 60;
-	$seconds += $secs;
+  
+  my $seconds = 0;
+  my ($hours, $mins, $secs) = $hoursMinsSecs =~ /^([^:]+):([^:]+):([^:]+)$/;
+  $seconds += $hours * 3600;
+  $seconds += $mins * 60;
+  $seconds += $secs;
 
-	return $seconds;
+  return $seconds;
 }
 
 
 method padZero ( $number, $pad ) {
-	
-	my $sprintf = "%0" . $pad . "d";
-	$number = sprintf $sprintf, $number;
+  
+  my $sprintf = "%0" . $pad . "d";
+  $number = sprintf $sprintf, $number;
 
-	return $number;
+  return $number;
 }
 
 method currentTime {
-	my ($sec, $min, $hour, $day_of_month, $month, $year, $weekday, $day_of_year, $isdst) = localtime;	
-	
-	$min = sprintf "%02d", $min;
-	$day_of_month = sprintf "%02d", $day_of_month;
-	$month	= $month + 1;	
-	$month	= sprintf "%02d", $month; 
-	$hour	= sprintf "%02d", $hour;
-	$min	= sprintf "%02d", $min;
-	$sec	= sprintf "%02d", $sec;	
-	$year	= 1900 + $year;
-	$year	=~ s/^\d{2}//;
+  my ($sec, $min, $hour, $day_of_month, $month, $year, $weekday, $day_of_year, $isdst) = localtime;  
+  
+  $min = sprintf "%02d", $min;
+  $day_of_month = sprintf "%02d", $day_of_month;
+  $month  = $month + 1;  
+  $month  = sprintf "%02d", $month; 
+  $hour  = sprintf "%02d", $hour;
+  $min  = sprintf "%02d", $min;
+  $sec  = sprintf "%02d", $sec;  
+  $year  = 1900 + $year;
+  $year  =~ s/^\d{2}//;
 
-	my $currentTime = "$year-$month-$day_of_month $hour:$min:$sec";
-	
-	return ($currentTime);
+  my $currentTime = "$year-$month-$day_of_month $hour:$min:$sec";
+  
+  return ($currentTime);
 }
 
 method currentTimeToMysql ( $currentTime ) {
 
-	# CURRENT DATETIME:	06-05-13 17:52:21
-	# MYSQL DATETIME:	1998-07-06 09:32:36
-	my ($year) = $currentTime =~ /^(\d+)/;
-	my $extra_digits = 19;
-	if ( $year < 20 )	{	$extra_digits = 20;	}	
-	
-	return "$extra_digits$currentTime";
+  # CURRENT DATETIME:  06-05-13 17:52:21
+  # MYSQL DATETIME:  1998-07-06 09:32:36
+  my ($year) = $currentTime =~ /^(\d+)/;
+  my $extra_digits = 19;
+  if ( $year < 20 )  {  $extra_digits = 20;  }  
+  
+  return "$extra_digits$currentTime";
 }
 
 method getMysqlTime {
-	$self->logNote("");
-	
-	my $time	=	`/bin/date`;
-	$self->logNote("$$ time", $time);
-	
-	my $mysqltime	=	$self->datetimeToMysql($time);
-	$self->logNote("$$ mysqltime", $mysqltime);
-	
-	return $mysqltime;
+  $self->logNote("");
+  
+  my ( $seconds, $minutes, $hour, $date, $month, $year, $weekday, $yday, $isdst) = localtime();
+  $self->logNote("month", $month);
+  $month = $self->monthNumber($month);
+  $self->logNote("month number", $month);
+  
+  $date = "0" . $date if length($date) == 1;
+  
+  my $mysqldatetime = "$year-$month-$date $hour:$minutes:$seconds";
+  $self->logNote("mysqldatetime", $mysqldatetime);
+    
+  return $mysqldatetime;
 }
+
+# CONVERT FROM DATETIME
+#
+# date DATE:   Sat May 3   19:24:16 UTC 2014
+# BLAST DATE:   Fri Jul 6   09:32:36 1998
+# .ACE DATE:   Thu Jan 19   20:32:58 2006
+# .PHD DATE:   Thu Jan 19   20:32:58 2006
+# STAT DATE: Apr 16 19:39:22 2006
+#
+# TO MYSQL DATETIME
+#
+# MYSQL DATE: 1998-07-06 09:32:36
+# 
+method datetimeToMysql ( $datetime ) {
+  #$self->logDebug("datetime", $datetime);
+
+  my ( $month, $date, $hour, $minutes, $seconds, $timezone, $year) = $datetime =~ /^\s*\S+\s+(\S+)\s+(\d+)\s+(\d+):(\d+):(\d+)\s+(\w+)?\s+(\d+)\s*/;
+
+  $self->logNote("month", $month);
+  $month = $self->monthNumber($month);
+  $self->logNote("month number", $month);
+  
+  $date = "0" . $date if length($date) == 1;
+  
+  my $mysqldatetime = "$year-$month-$date $hour:$minutes:$seconds";
+  $self->logNote("mysqldatetime", $mysqldatetime);
+    
+    return $mysqldatetime;
+}
+
 
 # CONVERT FROM:
 #
@@ -212,46 +246,15 @@ method compareGmt ( $date1, $date2 ) {
 
 }
 
-
-# CONVERT FROM DATETIME
-#
-# date DATE: 	Sat May 3 	19:24:16 UTC 2014
-# BLAST DATE: 	Fri Jul 6 	09:32:36 1998
-# .ACE DATE: 	Thu Jan 19 	20:32:58 2006
-# .PHD DATE: 	Thu Jan 19 	20:32:58 2006
-# STAT DATE: Apr 16 19:39:22 2006
-#
-# TO MYSQL DATETIME
-#
-# MYSQL DATE: 1998-07-06 09:32:36
-# 
-method datetimeToMysql ( $datetime ) {
-	#$self->logDebug("datetime", $datetime);
- 
-    my ( $month, $date, $hour, $minutes, $seconds, $timezone, $year) = $datetime =~ /^\s*\S+\s+(\S+)\s+(\d+)\s+(\d+):(\d+):(\d+)\s+(\w+)?\s+(\d+)\s*/;
-
-	$self->logNote("timezone", $timezone);
-	$self->logNote("month", $month);
-  $month = $self->monthNumber($month);
-	$self->logNote("month number", $month);
-	
-	$date = "0" . $date if length($date) == 1;
-	
-  my $mysqldatetime = "$year-$month-$date $hour:$minutes:$seconds";
-	$self->logNote("mysqldatetime", $mysqldatetime);
-    
-    return $mysqldatetime;
-}
-
   # CONVERT FROM BLAST DATETIME TO MYSQL DATETIME
-	# BLAST DATE: Fri Jul 6 09:32:36 1998
-	# .ACE DATE: Thu Jan 19 20:32:58 2006
-	# .PHD DATE: Thu Jan 19 20:32:58 2006
-	# MYSQL DATE: 1998-07-06 09:32:36
-	# 
+  # BLAST DATE: Fri Jul 6 09:32:36 1998
+  # .ACE DATE: Thu Jan 19 20:32:58 2006
+  # .PHD DATE: Thu Jan 19 20:32:58 2006
+  # MYSQL DATE: 1998-07-06 09:32:36
+  # 
     # STAT DATE: Apr 16 19:39:22 2006
 method blastToMysql {    
-	my $blast_datetime      =   shift;
+  my $blast_datetime      =   shift;
  
     my ( $month, $date, $hour, $minutes, $seconds, $year) = $blast_datetime =~ /^\s*\S+\s+(\S+)\s+(\d+)\s+(\d+):(\d+):(\d+)\s+(\d+)\s*/;
    # $date = Annotation::two_digit($date);
@@ -278,110 +281,110 @@ method monthNumber ( $month ) {
 }
 
 method statDatetimeCreated ( $filename ) {
-	
-	my $stat_string = `/usr/bin/stat $filename`;
-	my $tokens = $self->tokeniseString($stat_string); # DATA ENTRIES ARE DELIMITED WITH " " IF THEY CONTAIN SPACES
-	# 234881035 24271102 -rwxrwxrwx 1 young young 0 10000 "Apr 25 15:31:06 2006" "Jan 19 20:28:37 2006" "Jan 25 14:51:27 2006" 4096 24 0 /Users/young/FUNNYBASE/pipeline/151-158/phd_dir/151-001-A01.ab1.phd.1
+  
+  my $stat_string = `/usr/bin/stat $filename`;
+  my $tokens = $self->tokeniseString($stat_string); # DATA ENTRIES ARE DELIMITED WITH " " IF THEY CONTAIN SPACES
+  # 234881035 24271102 -rwxrwxrwx 1 young young 0 10000 "Apr 25 15:31:06 2006" "Jan 19 20:28:37 2006" "Jan 25 14:51:27 2006" 4096 24 0 /Users/young/FUNNYBASE/pipeline/151-158/phd_dir/151-001-A01.ab1.phd.1
 
-	#  FORMAT: Jan 25 14:51:27 2006	
-	my $stat_datetime = $$tokens[10];
-	# NB: Not all fields are supported on all filesystem types. Here are the meanings of the fields:
-	# 0 dev      device number of filesystem
-	# 1 ino      inode number
-	# 2 mode     file mode  (type and permissions)
-	# 3 nlink    number of (hard) links to the file
-	# 4 uid      numeric user ID of file's owner
-	# 5 gid      numeric group ID of file's owner
-	# 6 rdev     the device identifier (special files only)
-	# 7 size     total size of file, in bytes
-	# 8 atime    last access time in seconds since the epoch
-	# 9 mtime    last modify time in seconds since the epoch
-	#10 ctime    inode change time in seconds since the epoch (*)
-	#11 blksize  preferred block size for file system I/O
-	#12 blocks   actual number of blocks allocated
+  #  FORMAT: Jan 25 14:51:27 2006  
+  my $stat_datetime = $$tokens[10];
+  # NB: Not all fields are supported on all filesystem types. Here are the meanings of the fields:
+  # 0 dev      device number of filesystem
+  # 1 ino      inode number
+  # 2 mode     file mode  (type and permissions)
+  # 3 nlink    number of (hard) links to the file
+  # 4 uid      numeric user ID of file's owner
+  # 5 gid      numeric group ID of file's owner
+  # 6 rdev     the device identifier (special files only)
+  # 7 size     total size of file, in bytes
+  # 8 atime    last access time in seconds since the epoch
+  # 9 mtime    last modify time in seconds since the epoch
+  #10 ctime    inode change time in seconds since the epoch (*)
+  #11 blksize  preferred block size for file system I/O
+  #12 blocks   actual number of blocks allocated
 
-	return $stat_datetime;
+  return $stat_datetime;
 }
 
 method statDatetimeModified ( $filename ) {
-	
-	my $stat_string = `/usr/bin/stat $filename`;
-	my $tokens = $self->tokeniseString($stat_string); # DATA ENTRIES ARE DELIMITED WITH " " IF THEY CONTAIN SPACES
-	# 234881035 24271102 -rwxrwxrwx 1 young young 0 10000 "Apr 25 15:31:06 2006" "Jan 19 20:28:37 2006" "Jan 25 14:51:27 2006" 4096 24 0 /Users/young/FUNNYBASE/pipeline/151-158/phd_dir/151-001-A01.ab1.phd.1
+  
+  my $stat_string = `/usr/bin/stat $filename`;
+  my $tokens = $self->tokeniseString($stat_string); # DATA ENTRIES ARE DELIMITED WITH " " IF THEY CONTAIN SPACES
+  # 234881035 24271102 -rwxrwxrwx 1 young young 0 10000 "Apr 25 15:31:06 2006" "Jan 19 20:28:37 2006" "Jan 25 14:51:27 2006" 4096 24 0 /Users/young/FUNNYBASE/pipeline/151-158/phd_dir/151-001-A01.ab1.phd.1
 
-	#  FORMAT: Jan 25 14:51:27 2006	
-	my $stat_datetime = $$tokens[9];
-	# NB: Not all fields are supported on all filesystem types. Here are the meanings of the fields:
-	# 0 dev      device number of filesystem
-	# 1 ino      inode number
-	# 2 mode     file mode  (type and permissions)
-	# 3 nlink    number of (hard) links to the file
-	# 4 uid      numeric user ID of file's owner
-	# 5 gid      numeric group ID of file's owner
-	# 6 rdev     the device identifier (special files only)
-	# 7 size     total size of file, in bytes
-	# 8 atime    last access time in seconds since the epoch
-	# 9 mtime    last modify time in seconds since the epoch
-	#10 ctime    inode change time in seconds since the epoch (*)
-	#11 blksize  preferred block size for file system I/O
-	#12 blocks   actual number of blocks allocated
+  #  FORMAT: Jan 25 14:51:27 2006  
+  my $stat_datetime = $$tokens[9];
+  # NB: Not all fields are supported on all filesystem types. Here are the meanings of the fields:
+  # 0 dev      device number of filesystem
+  # 1 ino      inode number
+  # 2 mode     file mode  (type and permissions)
+  # 3 nlink    number of (hard) links to the file
+  # 4 uid      numeric user ID of file's owner
+  # 5 gid      numeric group ID of file's owner
+  # 6 rdev     the device identifier (special files only)
+  # 7 size     total size of file, in bytes
+  # 8 atime    last access time in seconds since the epoch
+  # 9 mtime    last modify time in seconds since the epoch
+  #10 ctime    inode change time in seconds since the epoch (*)
+  #11 blksize  preferred block size for file system I/O
+  #12 blocks   actual number of blocks allocated
 
-	return $stat_datetime;
+  return $stat_datetime;
 }
 
 method tokeniseString ( $string ) {
-	chomp($string);
-#	$self->logNote("STRING", $string);
-		
-	my $tokens;	
-	my $token_counter = 0;
-	while ( $string !~ /^\s*$/ )
-	{
-#		$self->logNote("Do quote check");
-		my $token = '';
-		if ( $string =~ s/^\s*"// )
-		{
-			while ( $string !~ /^\s*"/ and $string !~ /^\s*$/ )
-			{
-				$string =~ s/^\s*([^"^\s]+)//;
-				($token) .= "$1 ";
-				$token_counter++;	
-#				$self->logNote("Token counter (inner): $token_counter", $token);
-			}
-			$string =~ s/^\s*"//;
-#			$self->logNote("String at end (inner)", $string);
-		}
-		else
-		{
-			$string =~ s/^\s*(\S+)\s*//;
-			($token) .= $1;
-#			$self->logNote("No-quote token", $token);
-		}
-		
-		push @$tokens, $token;
-		$token_counter++;
-	}
-	return $tokens;
+  chomp($string);
+#  $self->logNote("STRING", $string);
+    
+  my $tokens;  
+  my $token_counter = 0;
+  while ( $string !~ /^\s*$/ )
+  {
+#    $self->logNote("Do quote check");
+    my $token = '';
+    if ( $string =~ s/^\s*"// )
+    {
+      while ( $string !~ /^\s*"/ and $string !~ /^\s*$/ )
+      {
+        $string =~ s/^\s*([^"^\s]+)//;
+        ($token) .= "$1 ";
+        $token_counter++;  
+#        $self->logNote("Token counter (inner): $token_counter", $token);
+      }
+      $string =~ s/^\s*"//;
+#      $self->logNote("String at end (inner)", $string);
+    }
+    else
+    {
+      $string =~ s/^\s*(\S+)\s*//;
+      ($token) .= $1;
+#      $self->logNote("No-quote token", $token);
+    }
+    
+    push @$tokens, $token;
+    $token_counter++;
+  }
+  return $tokens;
 }
-	
+  
 # CONVERT FROM STAT DATETIME TO MYSQL DATETIME
 # STAT DATE: Apr 16 19:39:22 2006
 # MYSQL DATE: 1998-07-06 09:32:36
 #
 # BLAST DATE: Fri Jul 6 09:32:36 1998
-# .ACE DATE: Thu Jan 19 20:32:58 2006	
+# .ACE DATE: Thu Jan 19 20:32:58 2006  
 # .PHD DATE: Thu Jan 19 20:32:58 2006
 method stattimeToMysql ( $stat_datetime ) {
 
-	#  FORMAT: Jan 25 14:51:27 2006	
-	my ( $month, $date, $time, $year) = split " ", $stat_datetime;
-	my ($hour, $minutes, $seconds) = split ":", $time;
-	$month = $self->monthNumber($month);
+  #  FORMAT: Jan 25 14:51:27 2006  
+  my ( $month, $date, $time, $year) = split " ", $stat_datetime;
+  my ($hour, $minutes, $seconds) = split ":", $time;
+  $month = $self->monthNumber($month);
     my $mysql_datetime = "$year-$month-$date $hour:$minutes:$seconds";
     
     return $mysql_datetime;
 }
-	
+  
 
 method timeZones {
   return {
