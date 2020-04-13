@@ -1,6 +1,7 @@
 package Util::Logger;
 use Moose::Role;
 use Method::Signatures::Simple;
+use Term::ANSIColor qw(:constants);
 
 =head2
 
@@ -183,34 +184,77 @@ method logNote ( $message, $variable ) {
 	return $line;
 }
 
-method logDebug ( $message, $variable ) {
-	return -1 if not $self->log() > 3 and not $self->printlog() > 3;
+method logDebug ( $message, $variable, $pretty ) {
+  my $logthreshold = 3;
+  my $logtype = "DEBUG";
+  return -1 if not $self->log() > $logthreshold and not $self->printlog() > $logthreshold;
 
-	$message = '' if not defined $message;
-    $self->appendLog($self->logfile()) if not defined $self->logfh();   
+  $message = '' if not defined $message;
+  $self->appendLog( $self->logfile() ) if not defined $self->logfh();   
 
-	my $text = $variable;
-	if ( not defined $variable and @_ == 2 )	{
-		$text = "undef";
-	}
-	elsif ( ref($variable) )	{
-		$text = $self->objectToJson($variable);
-	}
-
+  my $text = $self->getText( $variable, $pretty, scalar( @_ ) );
   my ($package, $filename, $linenumber) = caller;
   my $timestamp = $self->logTimestamp();
-	my $callingsub = (caller 1)[3] || '';
-	
-	my $indent = $self->indent();
-	my $spacer = " " x $indent;
-	my $line = "$timestamp$spacer" . "[DEBUG]   \t$callingsub\t$linenumber\t$message\n";
-	$line = "$timestamp$spacer" . "[DEBUG]   \t$callingsub\t$linenumber\t$message: $text\n" if @_ == 2;
-  
-  print { $self->logfh() } $line if defined $self->logfh() and $self->printlog() > 3;
-  print $line if $self->log() > 3;
+  my $callingsub = (caller 1)[3] || '';
+  my $line = $self->getLine( $logtype, $timestamp, $callingsub, $linenumber, $message, $text, scalar( @_ ) ); 
+  $self->printOrNot( $line, $logthreshold );
 
-	return $line;
+  return $line;
 }
+
+method logError ( $message, $variable, $pretty ) {
+  my $logthreshold = 0;
+  my $logtype = "ERROR";
+  return -1 if not $self->log() > $logthreshold and not $self->printlog() > $logthreshold;
+
+  $message = '' if not defined $message;
+  $self->appendLog( $self->logfile() ) if not defined $self->logfh();   
+
+  my $text = $self->getText( $variable, $pretty, scalar( @_ ) );
+  my ($package, $filename, $linenumber) = caller;
+  my $timestamp = $self->logTimestamp();
+  my $callingsub = (caller 1)[3] || '';
+  my $line = $self->getLine( $logtype, $timestamp, $callingsub, $linenumber, $message, $text, scalar( @_ ) );
+  print BRIGHT_RED; 
+  $self->printOrNot( $line, $logthreshold );
+  print RESET;
+
+  return $line;
+}
+
+method getLine ( $logtype, $timestamp, $callingsub, $linenumber, $message, $text, $numberargs ) {
+  my $indent = $self->indent();
+  my $spacer = " " x $indent;
+  $text = "" if not defined $text;
+  my $line = "$timestamp$spacer" . "[$logtype]   \t$callingsub\t$linenumber\t$message\n";
+  $line = "$timestamp$spacer" . "[$logtype]   \t$callingsub\t$linenumber\t$message: $text\n" if @_ >= 2;
+
+  return $line;
+}
+
+method getText( $variable, $pretty, $numberargs ) {
+  # print "****************** Logger::getText    numberargs: $numberargs\n";
+  my $text = $variable;
+  if ( not defined $variable and $numberargs == 2 )  {
+    $text = "undef";
+  }
+  elsif ( ref($variable) )  {
+    $text = $self->objectToJson($variable);
+    if ( $pretty ) {
+      # print "***************** DOING self->pretty()\n";
+      $text = $self->pretty( $text );
+      # print "***************** AFTER self->pretty()   text: $text\n";
+    }
+  }
+
+  return $text;
+}
+
+method printOrNot ( $line, $threshold ) {
+  print { $self->logfh() } $line if defined $self->logfh() and $self->printlog() > $threshold;
+  print $line if $self->log() > $threshold;
+}
+
 
 method logInfo ( $message ) {
 	return -1 if not $self->log() > 2 and not $self->printlog() > 2;
@@ -272,9 +316,8 @@ method logCritical ( $message ) {
 
 #### 1. PRINT MESSAGE TO BOTH LOGFILE AND STDOUT
 #### 2. PREFIX DATETIME AND CALLING CLASS, FILE AND LINE NUMBER
-method logCaller ( $message, $variable ) {
+method logCaller ( $message, $variable, $pretty ) {
 	$message = '' if not defined $message;
-  $self->appendLog($self->logfile()) if not defined $self->logfh();   
   my ($package, $filename, $linenumber) = caller;
   my $timestamp = $self->logTimestamp();
 	my $callingsub = (caller 1)[3] || '';
@@ -292,7 +335,7 @@ method logCaller ( $message, $variable ) {
 	my $indent = $self->indent();
 	my $spacer = " " x $indent;
 	my $line = "$timestamp$spacer" . "[CALLER]   \t$callingsub\t$linenumber\tcaller: $caller\t$callerline\t$message\n";
-	$line = "$timestamp$spacer" . "[CALLER]   \t$callingsub\t$linenumber\tcaller: $caller\t$callerline\t$message: $text\n" if @_ == 2;
+	$line = "$timestamp$spacer" . "[CALLER]   \t$callingsub\t$linenumber\tcaller: $caller\t$callerline\t$message: $text\n" if @_ >= 2;
 
 #	my $callerline = (caller 2)[2];
 #    my $line = "$timestamp\t[CALLER]  \t$callingsub\t$linenumber\tcaller: $caller\t$callerline\t$message\n";
@@ -302,38 +345,39 @@ method logCaller ( $message, $variable ) {
 	return $line;
 }
 
-method logError ( $message, $variable ) {
-	$message = '' if not defined $message;
-  # $self->appendLog($self->logfile()) if not defined $self->logfh();   
 
-	my $text = $variable;
-	if ( not defined $variable and @_ == 2 )	{
-		$text = "undef";
-	}
-	elsif ( ref($variable) )	{
-		$text = $self->objectToJson($variable);
-	}
+method pretty ( $text ) {
+  my $padding = 0;
+  my $step = 2;
+  my $pretty = "";
+  for ( my $i = 0; $i < length( $text ); $i++ ) {
+    my $character = substr( $text, $i, 1);
+    if ( $character eq "{" or $character eq "[" ) {
+      # $pretty .= "\n";
+      # $padding += $step;
+      $pretty .= " " x $padding;
+      $pretty .= $character;
+      $pretty .= "\n";
+      $pretty .= " " x $padding;
+      $padding += $step;
+    }
+    elsif ( $character eq "}" or $character eq "]" ) {
+      $pretty .= "\n";
+      $padding -= $step;
+      $pretty .= " " x $padding;
+      $pretty .= $character;
+    }
+    elsif ( $character eq "," ) {
+      $pretty .= $character;
+      $pretty .= "\n";
+      $pretty .= " " x $padding;
+    }
+    else {
+      $pretty .= $character; 
+    }
+  }
 
-  my ($package, $filename, $linenumber) = caller;
-  my $timestamp = $self->logTimestamp();
-	my $callingsub = (caller 1)[3];
-  my $line = "$timestamp\t[ERROR]   \t$callingsub\t$linenumber\t$message\n";
-
-	my $logtype	=	$self->logtype();
-	if ( $logtype eq "json" ) {
-	    print qq{{"error":"$message","subroutine":"$callingsub","linenumber":"$linenumber","filename":"$filename","timestamp":"$timestamp"}\n};
-	}
-	else {
-		my $indent = $self->indent();
-		my $spacer = " " x $indent;
-		my $line = "$timestamp$spacer" . "[ERROR]   \t$callingsub\t$linenumber\t$message\n";
-		$line = "$timestamp$spacer" . "[ERROR]   \t$callingsub\t$linenumber\t$message: $text\n" if @_ == 2;
-	}
-
-  print { $self->logfh() } $line if defined $self->logfh() and $self->printlog() > 0;
-  print $line if $self->printlog() > 0;
-	
-	return $line;
+  return $pretty
 }
 
 method logStatus ( $message, $data ) {
