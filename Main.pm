@@ -67,7 +67,7 @@ method getUserhome ( $username ) {
     
     PURPOSE
     
-        RETURN THE FULL PATH TO THE agua FOLDER WITHIN THE USER'S HOME DIR
+        RETURN THE FULL PATH TO THE core.dir FOLDER WITHIN THE USER'S HOME DIR
 
 =cut
 
@@ -79,8 +79,8 @@ method getFileroot ( $username ) {
     return if not defined $username;
 
     my $userdir = $self->conf()->getKey("core:USERDIR");
-    my $aguadir = $self->conf()->getKey("core:AGUADIR");
-    my $fileroot = "$userdir/$username/$aguadir";
+    my $coredir = $self->conf()->getKey("core:DIR");
+    my $fileroot = "$userdir/$username/$coredir";
     
     return $fileroot;    
 }

@@ -358,8 +358,8 @@ method pretty ( $text ) {
       $pretty .= " " x $padding;
       $pretty .= $character;
       $pretty .= "\n";
-      $pretty .= " " x $padding;
       $padding += $step;
+      $pretty .= " " x $padding;
     }
     elsif ( $character eq "}" or $character eq "]" ) {
       $pretty .= "\n";
