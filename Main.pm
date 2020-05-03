@@ -81,6 +81,9 @@ method getFileroot ( $username ) {
     my $userdir = $self->conf()->getKey("core:USERDIR");
     my $coredir = $self->conf()->getKey("core:DIR");
     my $fileroot = "$userdir/$username/$coredir";
+    if ( $username eq "root" ) {
+        $fileroot = "/$username/$coredir";
+    }
     
     return $fileroot;    
 }
