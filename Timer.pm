@@ -101,15 +101,14 @@ method currentTime {
   return ($currentTime);
 }
 
-method currentTimeToMysql ( $currentTime ) {
-
+method currentTimeToMysql ( $datetime ) {
   # CURRENT DATETIME:  06-05-13 17:52:21
   # MYSQL DATETIME:  1998-07-06 09:32:36
-  my ($year) = $currentTime =~ /^(\d+)/;
+  my ($year) = $datetime =~ /^(\d+)/;
   my $extra_digits = 19;
   if ( $year < 20 )  {  $extra_digits = 20;  }  
   
-  return "$extra_digits$currentTime";
+  return "$extra_digits$datetime";
 }
 
 method getMysqlTime {
