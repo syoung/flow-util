@@ -301,16 +301,6 @@ method logCritical ( $message ) {
   print { $self->logfh() } $line if defined $self->logfh() and $self->printlog() > 0;
   print $line if $self->log() > 0;
 	
-	#### FOR FASTCGI: SKIP TO END OF SCRIPT WITHOUT EXITING
-	#### NB: MUST PUT THIS AT END OF SCRIPT:
-	####
-	#### EXITLABEL:{};
-	#### 
-	#### OR YOU CAN WRITE A MESSAGE INSIDE IT:
-	#### 
-	#### EXITLABEL:{ warn "We have skipped to the end of the program\n"; };
-	goto EXITLABEL;
-	
 	return $line;
 }
 
