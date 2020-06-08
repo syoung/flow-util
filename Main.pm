@@ -72,11 +72,7 @@ method getUserhome ( $username ) {
 =cut
 
 method getFileroot ( $username ) {
-    $self->logNote("username", $username);
-
-    #### OTHERWISE, GET USERNAME FROM JSON IF NOT PROVIDED
-    $username = $self->username() if not defined $username;
-    return if not defined $username;
+    $self->logDebug("username", $username);
 
     my $userdir = $self->conf()->getKey("core:USERDIR");
     my $coredir = $self->conf()->getKey("core:DIR");
