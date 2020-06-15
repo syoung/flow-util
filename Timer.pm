@@ -118,9 +118,15 @@ method getMysqlTime {
   $self->logNote("month", $month);
   $month = $self->monthNumber($month);
   $self->logNote("month number", $month);
+  $year += 1900;
+  $self->logDebug( "year", $year );
   
-  $date = "0" . $date if length($date) == 1;
-  
+  $seconds = "0" . $seconds if length( $seconds ) == 1;
+  $minutes = "0" . $minutes if length( $minutes ) == 1;
+  $hour = "0" . $hour if length( $hour ) == 1;
+  $date = "0" . $date if length( $date ) == 1;
+  $month = "0" . $month if length( $month ) == 1;
+
   my $mysqldatetime = "$year-$month-$date $hour:$minutes:$seconds";
   $self->logNote("mysqldatetime", $mysqldatetime);
     

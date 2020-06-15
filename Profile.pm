@@ -3,45 +3,6 @@ use MooseX::Declare;
 use strict;
 use warnings;
 
-=head
-
-  METHOD: doProfileInheritance 
-
-  PURPOSE: ADD FIELDS FROM ONE OR MORE INHERITED PROFILES.
-
-  THE ORDER OF PRIORITY IS "FIRST TO LAST",  I.E., IF THE 
-
-  inherits FIELD IS AS FOLLOWS:
-
-
-   testprofile:
-
-     inherits : first,second,third
-
-
-  ... THEN:
-     
-    1. THE PROFILES first, second AND third MUST ALSO BE PRESENT
-
-    IN THE profiles.yml FILE (EXITS IF THIS IS NOT THE CASE)
-
-    2. THE FIELDS FROM PROFILE first WILL BE ADDED TO THE FIELDS
-
-    IN PROFILE testprofile WITHOUT OVERWRITING EXISTING FIELDS IN
-
-    testprofile
-
-    3. THE FIELDS IN PROFILE second WILL SIMILARLY BE ADDED TO
-
-    PROFILE testprofile WITHOUT OVERWRITING ANY EXISTING FIELDS
-
-    4. LASTLY, THE FIELDS IN PROFILE third WOULD BE ADDED WITHOUT
-
-    OVERWRITING ANY FIELDS ORIGINALLY IN PROFILE testprofile OR
-
-    ADDED TO IT FROM PROFILES first AND second
-=cut
-
 class Util::Profile with Util::Logger {
 
 use Data::Dumper;
@@ -52,27 +13,134 @@ has 'log'             =>  ( isa => 'Int', is => 'rw', default => 2 );
 has 'printlog'        =>  ( isa => 'Int', is => 'rw', default => 2 );
 
 # Strings
+has 'profilefile'     => ( isa => 'Str|Undef', is => 'rw' );
 has 'profilename'     => ( isa => 'Str|Undef', is => 'rw' );
+has 'profilestring'   => ( isa => 'Str|Undef', is => 'rw' );
 
 # Objects
 has 'profiles'        => ( isa => 'HashRef', is => 'rw' );
 has 'profilehash'     => ( isa => 'HashRef', is => 'rw' );
 
+=head
+  Instantiate class and process optional arguments:
+
+      profiles      String - YAML contents of profile file. 
+      profilefile   String - Location of YAML profile file
+
+      profilename  String - Name of profile
+
+    Generate 'profiles' hash attribute given 'profiles' or 'profilefile' arguments, with the contraint that 'profiles' takes priority over 'profilefile'.
+
+    Generate 'profilehash' hash attribute from 'profilename' argument.
+
+=cut
 method BUILD ( $args ) {
 
-  if ( defined $args->{ profiles } ) {
-    my $profiles = $self->yamlFileToData( $args->{ profiles } );
+  # print "Util::Profile::BUILD    args:\n";
+  # print Dumper $args;
+
+  #### SET LOGS
+  $self->log( $args->{ log } ) if defined $args->{ log };
+  $self->printlog( $args->{ printlog } ) if defined $args->{ printlog };
+  # $self->logDebug( "args", $args );
+
+  my $profilefile = $args->{ profilefile }; 
+  if ( defined $profilefile ) {
+    #### CONVERT YAML IN FILE TO profiles HASH 
+    my $profiles = $self->yamlFileToData( $profilefile );
     $self->logDebug( "profiles", $profiles );
-    $self->profiles( $profiles ); 
-    if ( defined $args->{ profilename } ) {
-      my $profilehash = $
+    $self->profiles( $profiles );
+  }
+
+  my $profilestring = $args->{ profilestring }; 
+  if ( defined $profilestring ) {
+    #### CONVERT YAML IN FILE TO profiles HASH 
+    my $profiles = $self->yamlToData( $profilestring );
+    $self->logDebug( "profiles", $profiles );
+    $self->profiles( $profiles );
+  }
+
+  my $profilename = $args->{ profilename };
+  $self->profilename( $profilename );
+  $self->logDebug( "profilename", $profilename );
+
+  if ( defined $profilename ) {
+    my $profilehash = $self->profiles()->{ $profilename };
+    $self->logDebug( "profilehash", $profilehash );
+    $self->profilehash( $profilehash );
+
+    exit;
+  }
+}
+
+=head
+
+  Insert profile values in String where '<profile:...key...>' is found, provided that:
+
+  - 'key' is ':'-separated string denoting the node path, e.g.:
+
+  a:b:c denotes:
+
+    a:
+      b:
+        c
+
+  - Node path denoted by 'key' exists in the profilehash
+
+  - Return undef if any 'key' doesn't exist in the profilehash
+
+=cut
+method insertProfileValues ( $data ) {
+  $self->logDebug( "data", $data );
+
+  my $profilehash = $self->profilehash();
+  $self->logDebug( "profilehash", $profilehash );
+
+  foreach my $key ( keys %$data ) {
+    # $self->logDebug( "DOING key $key" );
+    my $string = $data->{ $key };
+
+    next if not $string;
+    $data->{ $key } = $self->replaceString( $profilehash, $string );
+    if ( not defined $data->{ $key } ) {
+      $self->logError( "**** PROFILE PARSING FAILED. RETURNING undef TO TRIGGER ROLLBACK ****");
+      return undef;
+    }
+  }
+  # $self->logDebug( "data", $data );
+
+  return $data;
+}
+
+method replaceString( $string ) {
+  $self->logDebug( "string", $string );
+
+  my $profilehash = $self->profilehash();
+  # $self->logDebug( "profilehash", $profilehash );
+  return $string if not defined $profilehash;
+
+  while ( $string =~ /<profile:([^>]+)>/ ) {
+    my $keystring = $1;
+    $self->logDebug( "string", $string );
+    my $value = $self->getProfileValue( $keystring, $profilehash );
+    # $self->logDebug( "value", $value );
+
+    if ( not $value ) {
+      $self->logError( "*** ERROR *** Can't find profile value for key: $keystring ****" );
+      return undef;
     }
 
+    #### ONLY INSERT SCALAR VALUES
+    if ( ref( $value ) ne "" ) {
+      # print "Profile value is not a string: " . YAML::Tiny::Dump( $value ) . "\n";
+      $self->logError( "Profile value is not a string: " . YAML::Tiny::Dump( $value ) . "\n" );
+      return undef;
+    }
+
+    $string =~ s/<profile:$keystring>/$value/ if defined $value;
   }
-  elsif ( defined $args->{ yaml } ) {
-    my $profilehash = $self->yamlToData( $args->{ yaml } );
-    $self->profilehash( $profilehash ); 
-  }
+
+  return $string;
 }
 
 method getProfileValue ( $keystring ) {
@@ -101,13 +169,52 @@ method getProfileValue ( $keystring ) {
 #   return $hash;
 # }
 
+=head
 
-method doProfileInheritance ( $profilename ) {
+  Use profilename to set 'profilehash' attribute, assuming 'profiles' attribute is defined.
+
+  ADD FIELDS FROM ONE OR MORE INHERITED PROFILES, BASED ON A "FIRST TO LAST" ORDER OF DECREASING PRIORITY. 
+
+  FOR EXAMPLE, IF THE  inherits FIELD IS AS FOLLOWS:
+
+     inherits : first,second,third
+
+  THEN:
+     
+    1. THE PROFILES first, second AND third MUST ALSO BE PRESENT IN profiles.yml (EXIT PROGRAM IF NOT PRESENT)
+
+    2. ADD FIELDS FROM PROFILE 'first' TO profilehash WITHOUT OVERWRITING EXISTING FIELDS
+
+    3. SIMILARLY, ADD FIELDS IN PROFILE 'second' TO profilehash WITHOUT OVERWRITING ANY EXISTING FIELDS
+
+    4. LASTLY, ADD FIELDS IN PROFILE 'third' TO profilehash WITHOUT OVERWRITING ANY EXISTING FIELDS (POTENTIALLY ADDED FROM PROFILES 'first' AND 'second')
+
+  Arguments:
+
+  profilename    -- String: name of profile
+
+=cut
+method setProfileHash ( $profilename ) {
   $self->logDebug( "profilename", $profilename );
+  $self->profilename( $profilename );
   my $profiles = $self->profiles();
-  $self->logDebug( "profiles", $profiles );
-  
-  my $profilehash = $profiles->{$profilename};
+
+  my $profilehash = undef;
+  if ( defined $profiles ) {
+    $profilehash = $self->doProfileInheritance( $profilename );
+  }
+
+  $self->logDebug( "profilehash", $profilehash );
+
+
+  $self->profilehash( $profilehash );
+  $self->logDebug( "profilehash", $profilehash );
+
+  if ( not defined $profilehash ) {
+    $self->logWarning( "profilehash NOT DEFINED", $profilehash );
+    return {};
+  }
+
   my $inherits = $profilehash->{inherits};
   $self->logDebug( "inherits", $inherits );
   if ( not $inherits ) {
@@ -118,6 +225,7 @@ method doProfileInheritance ( $profilename ) {
   foreach my $inheritedprofile ( @inheritedprofiles ) {
     my $inherited = $profilehash->{$inheritedprofile};
     if ( not $inherited ) {
+      $self->logCritical( "Inherited profile not found in profiles.yml file: $inheritedprofile\n" );
       print "Inherited profile '$inheritedprofile' not found in profiles.yml file\n";
       exit;
     }
@@ -191,6 +299,19 @@ method elementInArray ( $array, $entry ) {
   return 0;
 }
 
+=head
+  Return YAML text string of 'profilehash' attribute.
+=cut
+method getProfileYaml() {
+  my $profilehash = $self->profilehash();
+  $self->logDebug( "profilehash", $profilehash );
+
+  return $self->dataToYaml( $profilehash );
+}
+
+=head
+  Convert YAML text string to data object.
+=cut
 method yamlToData ( $text ) {
   # $self->logDebug( "text", $text );
   return {} if not $text;
@@ -203,6 +324,9 @@ method yamlToData ( $text ) {
   return $data;
 }
 
+=head
+  Convert data object to YAML text string.
+=cut
 method dataToYaml ( $data ) {
   $self->logDebug( "data", $data );
   return "" if not $data;
@@ -216,6 +340,9 @@ method dataToYaml ( $data ) {
   return $text;
 }
 
+=head
+  Return data object converted from YAML contents of file.
+=cut
 method yamlFileToData ( $file ) {
   $self->logDebug( "file", $file );
 
@@ -223,8 +350,20 @@ method yamlFileToData ( $file ) {
 
   my $yaml = YAML::Tiny->read( $file );
   
-  return $$yaml[0];
+  return $self->yamlToData( $yaml );
 }
 
+=head
+  Return data object converted from YAML contents of file.
+=cut
+method getFileYaml ( $file ) {
+  $self->logDebug( "file", $file );
+
+  return undef if not $file;
+
+  my $yaml = YAML::Tiny->read( $file );
+  
+  return $yaml;
+}
 
 } #### class
