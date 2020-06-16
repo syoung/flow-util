@@ -68,9 +68,7 @@ method BUILD ( $args ) {
     my $profilehash = $self->profiles()->{ $profilename };
     $self->logDebug( "profilehash", $profilehash );
     $self->profilehash( $profilehash );
-
-    exit;
-  }
+ }
 }
 
 =head
@@ -101,7 +99,7 @@ method insertProfileValues ( $data ) {
     my $string = $data->{ $key };
 
     next if not $string;
-    $data->{ $key } = $self->replaceString( $profilehash, $string );
+    $data->{ $key } = $self->replaceString( $string );
     if ( not defined $data->{ $key } ) {
       $self->logError( "**** PROFILE PARSING FAILED. RETURNING undef TO TRIGGER ROLLBACK ****");
       return undef;
@@ -194,25 +192,25 @@ method getProfileValue ( $keystring ) {
   profilename    -- String: name of profile
 
 =cut
+
 method setProfileHash ( $profilename ) {
   $self->logDebug( "profilename", $profilename );
   $self->profilename( $profilename );
   my $profiles = $self->profiles();
-
-  my $profilehash = undef;
-  if ( defined $profiles ) {
-    $profilehash = $self->doProfileInheritance( $profilename );
+  $self->logDebug( "profiles", $profiles );
+  if ( not $profiles or not $profilename ) {
+    $self->logWarning( "profiles NOT DEFINED", $profiles );
+    $self->profilehash( undef );
+    return undef;
   }
 
+  my $profilehash = $profiles->{ $profilename };
   $self->logDebug( "profilehash", $profilehash );
-
-
   $self->profilehash( $profilehash );
-  $self->logDebug( "profilehash", $profilehash );
 
   if ( not defined $profilehash ) {
     $self->logWarning( "profilehash NOT DEFINED", $profilehash );
-    return {};
+    return undef;
   }
 
   my $inherits = $profilehash->{inherits};
@@ -223,7 +221,7 @@ method setProfileHash ( $profilename ) {
 
   my @inheritedprofiles = split ",", $inherits;
   foreach my $inheritedprofile ( @inheritedprofiles ) {
-    my $inherited = $profilehash->{$inheritedprofile};
+    my $inherited = $profiles->{ $inheritedprofile };
     if ( not $inherited ) {
       $self->logCritical( "Inherited profile not found in profiles.yml file: $inheritedprofile\n" );
       print "Inherited profile '$inheritedprofile' not found in profiles.yml file\n";
