@@ -155,33 +155,22 @@ method logReport ( $message ) {
 	return $line;
 }
 
-method logNote ( $message, $variable ) {
-	return -1 if not $self->log() > 4 and not $self->printlog() > 4;
+method logNote ( $message, $variable, $pretty ) {
+  my $logthreshold = 4;
+  my $logtype = "NOTE";
+  return -1 if not $self->log() > $logthreshold and not $self->printlog() > $logthreshold;
 
-	$message = '' if not defined $message;
-  $self->appendLog($self->logfile()) if not defined $self->logfh(); 
+  $message = '' if not defined $message;
+  $self->appendLog( $self->logfile() ) if not defined $self->logfh();   
 
-	my $text = $variable;
-	if ( not defined $variable and @_ == 2 )	{
-		$text = "undef";
-	}
-	elsif ( ref($variable) )	{
-		$text = $self->objectToJson($variable);
-	}
-
+  my $text = $self->getText( $variable, $pretty, scalar( @_ ) );
   my ($package, $filename, $linenumber) = caller;
   my $timestamp = $self->logTimestamp();
-	my $callingsub = (caller 1)[3] || '';
+  my $callingsub = (caller 1)[3] || '';
+  my $line = $self->getLine( $logtype, $timestamp, $callingsub, $linenumber, $message, $text, scalar( @_ ) ); 
+  $self->printOrNot( $line, $logthreshold );
 
-	my $indent = $self->indent();
-	my $spacer = " " x $indent;
-	my $line = "$timestamp$spacer" . "[NOTE]   \t$callingsub\t$linenumber\t$message\n";
-	$line = "$timestamp$spacer" . "[NOTE]   \t$callingsub\t$linenumber\t$message: $text\n" if @_ == 2;
-
-  print { $self->logfh() } $line if defined $self->logfh() and $self->printlog() > 4;
-  print $line if $self->log() > 4;
-
-	return $line;
+  return $line;
 }
 
 method logDebug ( $message, $variable, $pretty ) {
@@ -334,7 +323,6 @@ method logCaller ( $message, $variable, $pretty ) {
   print { $self->logfh() } $line if defined $self->logfh() and $self->printlog() > 3;
 	return $line;
 }
-
 
 method pretty ( $text ) {
   my $padding = 0;

@@ -18,8 +18,8 @@ has 'profilename'     => ( isa => 'Str|Undef', is => 'rw' );
 has 'profilestring'   => ( isa => 'Str|Undef', is => 'rw' );
 
 # Objects
-has 'profiles'        => ( isa => 'HashRef', is => 'rw' );
-has 'profilehash'     => ( isa => 'HashRef', is => 'rw' );
+has 'profiles'        => ( isa => 'HashRef|Undef', is => 'rw' );
+has 'profilehash'     => ( isa => 'HashRef|Undef', is => 'rw' );
 
 =head
   Instantiate class and process optional arguments:
