@@ -6,7 +6,7 @@ use warnings;
 class Util::Profile with Util::Logger {
 
 use Data::Dumper;
-
+use Sys::Hostname;
 
 # Integers
 has 'log'             =>  ( isa => 'Int', is => 'rw', default => 2 );   
@@ -192,6 +192,45 @@ method getProfileValue ( $keystring ) {
   profilename    -- String: name of profile
 
 =cut
+
+method getHostType {
+  
+  my $runtype = $self->getProfileValue( "run:type" ) || "Shell";
+  my $hostname = $self->getProfileValue( "host:name" ) || "Local";
+
+  my $hosttype = "Local";
+  if ( defined $self->getProfileValue( "virtual" ) ) {
+    $self->logDebug( "SETTING hosttype TO Remote" );
+    $hosttype = "Remote"; 
+  }
+  # else {
+  #   my $thishost = Sys::Hostname::hostname || "";
+  #   $self->logDebug( "thishost", $thishost );
+  #   if ( $hostname ne "localhost" ) {
+  #     if ( $thishost and $hostname ) {
+  #       if ( $hostname ne $thishost ) {
+  #           $hosttype = "Remote";
+  #       }
+  #     }
+  #     else {
+  #       $hosttype = "Remote";
+  #     }
+  #   }
+  # }
+
+  $hosttype = $self->cowCase( $hosttype );
+  $runtype = $self->cowCase( $runtype );
+  $self->logDebug( "runtype", $runtype );
+  $self->logDebug( "hosttype", $hosttype );
+
+  return ( $hosttype, $runtype );
+}
+
+method cowCase ( $string ) {
+  return undef if not $string;
+
+  return uc( substr( $string, 0, 1) ) . substr( $string, 1);
+}
 
 method setProfileHash ( $profilename ) {
   $self->logDebug( "profilename", $profilename );
