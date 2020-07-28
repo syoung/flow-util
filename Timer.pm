@@ -32,8 +32,7 @@ method localTime {
     my $date = $mday;
     
     $year = 1900 + $year;
-    if ($year eq "1900")
-    {
+    if ( $year eq "1900" ) {
         $year = 2000 + $year;
     }
     
@@ -112,26 +111,30 @@ method currentTimeToMysql ( $datetime ) {
 }
 
 method getMysqlTime {
-  $self->logNote("");
-  
   my ( $seconds, $minutes, $hour, $date, $month, $year, $weekday, $yday, $isdst) = localtime();
-  $self->logNote("month", $month);
-  $month = $self->monthNumber($month);
-  $self->logNote("month number", $month);
+  $month = $month + 1;
   $year += 1900;
-  $self->logDebug( "year", $year );
   
-  $seconds = "0" . $seconds if length( $seconds ) == 1;
-  $minutes = "0" . $minutes if length( $minutes ) == 1;
-  $hour = "0" . $hour if length( $hour ) == 1;
-  $date = "0" . $date if length( $date ) == 1;
-  $month = "0" . $month if length( $month ) == 1;
+  $month = $self->padZero( $month, 1 );
+  $date = $self->padZero( $date, 1 );
+  $hour = $self->padZero( $hour, 1 );
+  $minutes = $self->padZero( $minutes, 1 );
+  $seconds = $self->padZero( $seconds, 1 );
+  
+  $self->logNote( "year", $year );
+  $self->logNote("month number", $month);
+  
+  my $datetime = "$year-$month-$date $hour:$minutes:$seconds";
+  $self->logNote("datetime", $datetime);
 
-  my $mysqldatetime = "$year-$month-$date $hour:$minutes:$seconds";
-  $self->logNote("mysqldatetime", $mysqldatetime);
-    
-  return $mysqldatetime;
+  return $datetime;
 }
+
+# method padZero ( $string,  ) {
+#   $string = "0" . $string if length( $string ) == 1;
+  
+#   return $string;
+# }
 
 # CONVERT FROM DATETIME
 #
@@ -311,32 +314,6 @@ method statDatetimeCreated ( $filename ) {
   return $stat_datetime;
 }
 
-method statDatetimeModified ( $filename ) {
-  
-  my $stat_string = `/usr/bin/stat $filename`;
-  my $tokens = $self->tokeniseString($stat_string); # DATA ENTRIES ARE DELIMITED WITH " " IF THEY CONTAIN SPACES
-  # 234881035 24271102 -rwxrwxrwx 1 young young 0 10000 "Apr 25 15:31:06 2006" "Jan 19 20:28:37 2006" "Jan 25 14:51:27 2006" 4096 24 0 /Users/young/FUNNYBASE/pipeline/151-158/phd_dir/151-001-A01.ab1.phd.1
-
-  #  FORMAT: Jan 25 14:51:27 2006  
-  my $stat_datetime = $$tokens[9];
-  # NB: Not all fields are supported on all filesystem types. Here are the meanings of the fields:
-  # 0 dev      device number of filesystem
-  # 1 ino      inode number
-  # 2 mode     file mode  (type and permissions)
-  # 3 nlink    number of (hard) links to the file
-  # 4 uid      numeric user ID of file's owner
-  # 5 gid      numeric group ID of file's owner
-  # 6 rdev     the device identifier (special files only)
-  # 7 size     total size of file, in bytes
-  # 8 atime    last access time in seconds since the epoch
-  # 9 mtime    last modify time in seconds since the epoch
-  #10 ctime    inode change time in seconds since the epoch (*)
-  #11 blksize  preferred block size for file system I/O
-  #12 blocks   actual number of blocks allocated
-
-  return $stat_datetime;
-}
-
 method tokeniseString ( $string ) {
   chomp($string);
 #  $self->logNote("STRING", $string);
@@ -381,7 +358,7 @@ method tokeniseString ( $string ) {
 # .PHD DATE: Thu Jan 19 20:32:58 2006
 method stattimeToMysql ( $stat_datetime ) {
 
-  #  FORMAT: Jan 25 14:51:27 2006  
+  #  FORMAT: Jan 25 14:51:27 2006 = 
   my ( $month, $date, $time, $year) = split " ", $stat_datetime;
   my ($hour, $minutes, $seconds) = split ":", $time;
   $month = $self->monthNumber($month);
@@ -389,7 +366,15 @@ method stattimeToMysql ( $stat_datetime ) {
     
     return $mysql_datetime;
 }
+
+method getFileModified ( $file ) {
+  my $datetime = `/usr/bin/stat $file | grep Modify`;
+  $datetime =~ s/Modify:\s+//;
+  $datetime =~ s/(\d+:\d+:\d+).+$/$1/;
+  $self->logDebug( "datetime", $datetime );
   
+  return $datetime;
+}
 
 method timeZones {
   return {

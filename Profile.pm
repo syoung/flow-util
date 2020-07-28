@@ -95,7 +95,7 @@ method insertProfileValues ( $data ) {
   $self->logDebug( "profilehash", $profilehash );
 
   foreach my $key ( keys %$data ) {
-    # $self->logDebug( "DOING key $key" );
+    $self->logDebug( "DOING key $key" );
     my $string = $data->{ $key };
 
     next if not $string;
@@ -121,7 +121,7 @@ method replaceString( $string ) {
     my $keystring = $1;
     $self->logDebug( "string", $string );
     my $value = $self->getProfileValue( $keystring, $profilehash );
-    # $self->logDebug( "value", $value );
+    $self->logDebug( "value", $value );
 
     if ( not $value ) {
       $self->logError( "*** ERROR *** Can't find profile value for key: $keystring ****" );
@@ -203,20 +203,6 @@ method getHostType {
     $self->logDebug( "SETTING hosttype TO Remote" );
     $hosttype = "Remote"; 
   }
-  # else {
-  #   my $thishost = Sys::Hostname::hostname || "";
-  #   $self->logDebug( "thishost", $thishost );
-  #   if ( $hostname ne "localhost" ) {
-  #     if ( $thishost and $hostname ) {
-  #       if ( $hostname ne $thishost ) {
-  #           $hosttype = "Remote";
-  #       }
-  #     }
-  #     else {
-  #       $hosttype = "Remote";
-  #     }
-  #   }
-  # }
 
   $hosttype = $self->cowCase( $hosttype );
   $runtype = $self->cowCase( $runtype );

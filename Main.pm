@@ -28,6 +28,20 @@ has 'conf'            => (
     builder => "setConf" 
 );
 
+
+method removeEmptyFields ( $hash ) {
+  # $self->logDebug( "hash", $hash );
+  return undef if not defined $hash;
+
+  for my $key ( keys %$hash ) {
+    if ( $hash->{ $key } eq "" ) {
+      delete $hash->{ $key };
+    }
+  }
+
+  return $hash;
+}
+
 method setConf {
     my $conf     = Conf::Yaml->new({
         backup        =>    1,
@@ -72,16 +86,16 @@ method getUserhome ( $username ) {
 =cut
 
 method getFileroot ( $username ) {
-    $self->logDebug("username", $username);
+  $self->logDebug("username", $username);
 
-    my $userdir = $self->conf()->getKey("core:USERDIR");
-    my $coredir = $self->conf()->getKey("core:DIR");
-    my $fileroot = "$userdir/$username/$coredir";
-    if ( $username eq "root" ) {
-        $fileroot = "/$username/$coredir";
-    }
-    
-    return $fileroot;    
+  my $userdir = $self->conf()->getKey("core:USERDIR");
+  my $coredir = $self->conf()->getKey("core:DIR");
+  my $fileroot = "$userdir/$username/$coredir";
+  if ( $username eq "root" ) {
+      $fileroot = "/$username/$coredir";
+  }
+  
+  return $fileroot;    
 }
 
 method isTestUser ( $username ) {
